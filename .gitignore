@@ -1,0 +1,25 @@
+# raw JSON cache lives outside the repo (see src/hehuan/config.py CACHE_DIR)
+cache/
+logs/
+*.log
+
+# large binaries
+*.bsp
+*.zip
+*.nc
+*.grib
+
+# python
+__pycache__/
+*.pyc
+.venv/
+.ipynb_checkpoints/
+.pytest_cache/
+
+# scratch outputs
+outputs/*.tmp
+results/**/*.tmp
+
+# personal documents (contain the student's real name)
+*計畫書*.pdf
+*.docx

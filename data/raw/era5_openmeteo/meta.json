@@ -1,0 +1,35 @@
+{
+ "466920_taipei": {
+  "requested": [
+   25.0377,
+   121.5148
+  ],
+  "latitude": 25.0,
+  "longitude": 121.5,
+  "elevation": 14.0,
+  "utc_offset_seconds": 28800,
+  "rows": 157800
+ },
+ "466910_anbu": {
+  "requested": [
+   25.1826,
+   121.5297
+  ],
+  "latitude": 25.25,
+  "longitude": 121.5,
+  "elevation": 831.0,
+  "utc_offset_seconds": 28800,
+  "rows": 157800
+ },
+ "C0H990_kunyang": {
+  "requested": [
+   24.1264,
+   121.2837
+  ],
+  "latitude": 24.25,
+  "longitude": 121.25,
+  "elevation": 3017.0,
+  "utc_offset_seconds": 28800,
+  "rows": 157800
+ }
+}
