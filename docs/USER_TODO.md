@@ -15,7 +15,7 @@
 
 ## 選做：鹿林天文台雲感測器與氣象站原始檔（台灣高山獨立地面真值）
 - 雲感測器（Boltwood，10 分鐘 sky−ambient 溫差，2012–2024，每年 0.5–7 MB）與氣象站（逐分鐘，2009–2025，每年 60–70 MB）公開於 https://www.lulin.ncu.edu.tw/download/weather/WeatherFiles/
-- 屬於檔案下載，需要你同意；同意後告訴 Claude，或自行下載到 `data/raw/lulin/`。
+- 已於 2026-09-12 依你的同意下載到 `%LOCALAPPDATA%\hehuan_cache\lulin\`（cloudsensor/ 13 檔、weather/ 17 檔）。下一步：寫解析器，把雲感測器的天空—環境溫差轉成逐 10 分鐘晴/陰，與鹿林氣象站露點差對照，驗證整夜表現。
 - 用途：用鹿林（2862 m，距玉山站 8 km）驗證露點差規則在整夜（含後半夜）的表現，這是目前真值只到 21 時的最大缺口。
 
 ## 活動實況紀錄
