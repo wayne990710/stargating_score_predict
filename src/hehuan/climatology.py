@@ -15,14 +15,19 @@ def apply_rule(nh: pd.DataFrame, rule: dict) -> pd.Series:
         x = nh["dpd"]; p = x >= rule["threshold"]
     elif rule["kind"] == "R_rh":
         x = nh["rh"]; p = x <= rule["threshold"]
+    elif rule["kind"] == "R_dpd+E_mh":
+        x = nh["dpd"]; p = (x >= rule["dpd_threshold"]) & (nh["e_mh"] <= rule["threshold"]) & nh["e_mh"].notna()
     else:
         raise ValueError(rule)
     return (p & no_rain & x.notna()).astype(bool)
 
 
 def hourly_valid(nh: pd.DataFrame, rule: dict) -> pd.Series:
-    x = nh["dpd"] if rule["kind"] == "R_dpd" else nh["rh"]
-    return x.notna() & nh["rain_3h_known"].astype(bool)
+    x = nh["rh"] if rule["kind"] == "R_rh" else nh["dpd"]
+    v = x.notna() & nh["rain_3h_known"].astype(bool)
+    if rule["kind"] == "R_dpd+E_mh":
+        v &= nh["e_mh"].notna()
+    return v
 
 
 def proxy_nights(nh: pd.DataFrame, rule: dict) -> pd.DataFrame:
@@ -76,6 +81,7 @@ def year_block_bootstrap(nights: pd.DataFrame, col: str, by="month", n_boot=1000
 def month_hour_heatmap(nh: pd.DataFrame, rule: dict) -> pd.DataFrame:
     clear = apply_rule(nh, rule); valid = hourly_valid(nh, rule)
     d = pd.DataFrame({"clear": clear[valid], "month": nh.index.month[valid], "hour": nh.index.hour[valid]})
+    d = d[d.hour.isin(C.NIGHT_HOURS)]
     tab = d.groupby(["month", "hour"]).clear.mean().unstack("hour")
     return tab[[h for h in C.NIGHT_HOURS if h in tab.columns]].round(3)
 

@@ -87,6 +87,16 @@ def fit_predict(train: pd.DataFrame, test: pd.DataFrame) -> tuple:
         t, j = youden_threshold(train[col], train["y"], "le")
         th[name] = dict(threshold=t, youden_j=j)
         pred[name] = (test[col] <= t) & test[col].notna()
+    # combined: surface rule AND ERA5 mid+high cloud below a threshold chosen (on training hours that the
+    # surface rule calls clear) to catch cloud ABOVE the station that surface humidity cannot see
+    t_dpd = th["R_dpd"]["threshold"]
+    sub = train[(train["dpd"] >= t_dpd) & train["no_rain3"]]
+    if len(sub) > 50 and sub["y"].nunique() == 2:
+        t_mh, j = youden_threshold(sub["e_mh"], sub["y"], "le")
+    else:
+        t_mh, j = th["E_mh"]["threshold"], np.nan
+    th["R_dpd+E_mh"] = dict(threshold=t_mh, dpd_threshold=t_dpd, youden_j=j)
+    pred["R_dpd+E_mh"] = pred["R_dpd"] & (test["e_mh"] <= t_mh) & test["e_mh"].notna()
     # climatology baseline (training-year monthly majority)
     clim = train.groupby("month")["y"].mean()
     th["CLIM"] = dict(monthly_clear_share=clim.round(3).to_dict())
@@ -106,7 +116,7 @@ def fit_predict(train: pd.DataFrame, test: pd.DataFrame) -> tuple:
     return pred, th
 
 
-def loyo(d: pd.DataFrame, models=("R_dpd", "R_rh", "LR", "E_tcc", "E_mh", "CLIM")):
+def loyo(d: pd.DataFrame, models=("R_dpd", "R_rh", "R_dpd+E_mh", "LR", "E_tcc", "E_mh", "CLIM")):
     """Leave-one-year-out. Returns (fold metrics long table, out-of-fold predictions, thresholds per fold)."""
     rows, preds, ths = [], [], {}
     for y in sorted(d["year"].unique()):

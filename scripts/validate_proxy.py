@@ -17,17 +17,22 @@ import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+plt.rcParams["font.family"] = ["Microsoft JhengHei", "DejaVu Sans"]
+plt.rcParams["axes.unicode_minus"] = False
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 from hehuan import config as C, validate as V   # noqa: E402
 
-MODELS = ["R_dpd", "R_rh", "LR", "E_tcc", "E_mh", "CLIM"]
+MODELS = ["R_dpd", "R_rh", "R_dpd+E_mh", "LR", "E_tcc", "E_mh", "CLIM"]
 
 
-def main(stn_id="467550", hours=(20, 21)):
+def main(stn_id="467550", hours=(20, 21), months=None, tag=""):
     nh = pd.read_csv(C.PROCESSED / "night_hours" / f"{stn_id}_night_hours.csv.gz", index_col="time", parse_dates=["time"])
     d = V.prepare(nh, hours)
+    if months:
+        d = d[d.month.isin(months)]
+    stn_id = stn_id + tag
     years = sorted(d.year.unique())
     print(f"{stn_id}: {len(d)} truth hours, years {years[0]}-{years[-1]}, clear share {d.y.mean():.3f}")
     by_fold, oof, ths = V.loyo(d, MODELS)
@@ -72,4 +77,6 @@ def main(stn_id="467550", hours=(20, 21)):
 if __name__ == "__main__":
     stn = sys.argv[1] if len(sys.argv) > 1 else "467550"
     hrs = tuple(int(h) for h in sys.argv[2].split(",")) if len(sys.argv) > 2 else (20, 21)
-    main(stn, hrs)
+    mon = [int(m) for m in sys.argv[3].split(",")] if len(sys.argv) > 3 else None
+    tag = sys.argv[4] if len(sys.argv) > 4 else ""
+    main(stn, hrs, mon, tag)

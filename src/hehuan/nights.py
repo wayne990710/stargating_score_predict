@@ -32,9 +32,12 @@ def longest_run(bools) -> int:
     return best
 
 
+TRUTH_EXTRA_HOURS = [5]   # 05 LST kept in the night-hours table for winter pre-dawn validation only
+
+
 def night_hours_frame(hourly: pd.DataFrame) -> pd.DataFrame:
-    """Keep only the 9 night hours and add night / hour_in_night columns."""
-    d = hourly[hourly.index.hour.isin(NIGHT_HOURS)].copy()
+    """Keep the 9 night hours (+05 LST for validation) and add night / second_half columns."""
+    d = hourly[hourly.index.hour.isin(NIGHT_HOURS + TRUTH_EXTRA_HOURS)].copy()
     d["night"] = night_date(d.index)
     d["second_half"] = d.index.hour <= 4
     return d
@@ -45,6 +48,7 @@ def label_from_clear(clear: pd.Series, valid: pd.Series, mean_cloud: pd.Series,
     """Vectorised night labels from per-hour 'clear' (bool, False when missing) and 'valid' (bool) series
     that are indexed by hour-ending time; returns one row per night."""
     df = pd.DataFrame({"clear": clear.astype(bool), "valid": valid.astype(bool), "cloud": mean_cloud})
+    df = df[df.index.hour.isin(NIGHT_HOURS)]
     df["night"] = night_date(df.index)
     g = df.groupby("night")
     out = pd.DataFrame({
@@ -83,6 +87,7 @@ def truth_nights(hourly: pd.DataFrame, cloud_col="cloud_sat", clear_max=CLEAR_MA
 def station_night_aggregates(hourly: pd.DataFrame) -> pd.DataFrame:
     """Per-night summaries of station variables (for climatology plots and transfer checks)."""
     d = night_hours_frame(hourly)
+    d = d[d.index.hour.isin(NIGHT_HOURS)]
     g = d.groupby("night")
     agg = {}
     for c in ("rh", "dpd", "t_air", "wind", "pres"):

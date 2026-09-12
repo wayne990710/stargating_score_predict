@@ -1,3 +1,3 @@
 cloud_manual_eff,n,rh_mean,rh_ge98,era5_tcc
-manual missing,11196,71.8,0.077,0.736
-manual present,8529,73.9,0.264,0.736
+manual missing,5265,72.6,0.228,0.723
+manual present,15189,73.6,0.242,0.74

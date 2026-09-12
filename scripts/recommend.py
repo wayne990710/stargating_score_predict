@@ -3,7 +3,7 @@
 
     python scripts/recommend.py --start 2026-10-01 --end 2026-12-31 [--site hehuan] [--top 15] [--min-dark 3]
 
-score = P_clear(half-month climatology, def_A)  x  dark_frac(moonless astronomical-night share)  x  holiday weight
+score = P_clear(half-month climatology, default evening_clear = 20-21 LST both clear)  x  dark_frac(moonless astronomical-night share)  x  holiday weight
 holiday weight: 1.0 if the NEXT day is a holiday/weekend (Fri, Sat, day before a public holiday), else --weekday-weight.
 Output: a ranked table (markdown + CSV under results/recommend/), one row per night with every component.
 """
@@ -20,16 +20,16 @@ from hehuan import config as C   # noqa: E402
 SITES = {"hehuan": ("c0h9c0", "hehuan"), "taipei": ("466920", "taipei")}
 
 
-def load_components(site: str):
+def load_components(site: str, metric="evening_clear"):
     tag, astro_name = SITES[site]
-    prob = pd.read_csv(C.RESULTS / "tables" / f"{tag}_halfmonth_prob_def_A.csv", index_col=0)
+    prob = pd.read_csv(C.RESULTS / "tables" / f"{tag}_halfmonth_prob_{metric}.csv", index_col=0)
     astro = pd.read_csv(C.PROCESSED / "astro" / f"{astro_name}_nights_astro_2008_2027.csv", parse_dates=["night"]).set_index("night")
     cal = pd.read_csv(C.PROCESSED / "calendar" / "tw_calendar.csv", parse_dates=["date"]).set_index("date")
     return prob, astro, cal
 
 
-def recommend(start, end, site="hehuan", min_dark=3.0, weekday_weight=0.6, top=15):
-    prob, astro, cal = load_components(site)
+def recommend(start, end, site="hehuan", min_dark=3.0, weekday_weight=0.6, top=15, metric="evening_clear"):
+    prob, astro, cal = load_components(site, metric)
     nights = pd.date_range(start, end, freq="D")
     rows = []
     for d in nights:
@@ -61,13 +61,15 @@ def main():
     ap.add_argument("--top", type=int, default=15)
     ap.add_argument("--min-dark", type=float, default=3.0)
     ap.add_argument("--weekday-weight", type=float, default=0.6)
+    ap.add_argument("--metric", default="evening_clear", choices=["evening_clear", "def_A", "def_B"],
+                    help="evening_clear = 20-21 LST both clear (directly validated); def_A = whole-night definition")
     a = ap.parse_args()
-    df = recommend(a.start, a.end, a.site, a.min_dark, a.weekday_weight, a.top)
+    df = recommend(a.start, a.end, a.site, a.min_dark, a.weekday_weight, a.top, a.metric)
     out = C.RESULTS / "recommend"; out.mkdir(exist_ok=True)
     df.to_csv(out / f"recommend_{a.site}_{a.start}_{a.end}.csv", index=False, encoding="utf-8-sig")
     show = df.head(a.top)[["rank", "night", "weekday", "next_day_off", "p_clear", "p_ci", "moon_illum", "dark_hours", "moonrise", "moonset", "score", "note"]]
     md = [f"# 上山日期推薦：{a.site} {a.start} ~ {a.end}\n",
-          f"分數 = 半月可觀星機率 × 無月黑暗時數比例 × 假日權重（隔天放假 1.0，否則 {a.weekday_weight}）；黑暗時數 < {a.min_dark} h 的夜排在最後。\n",
+          f"分數 = 半月「{a.metric}」機率 × 無月黑暗時數比例 × 假日權重（隔天放假 1.0，否則 {a.weekday_weight}）；黑暗時數 < {a.min_dark} h 的夜排在最後。\n",
           "機率來自代理指標重建的 2008–2025 氣候統計（狀態見 results/tables/c0h9c0_rule_used.json）。\n",
           show.to_markdown(index=False)]
     (out / f"recommend_{a.site}_{a.start}_{a.end}.md").write_text("\n".join(md), encoding="utf-8")

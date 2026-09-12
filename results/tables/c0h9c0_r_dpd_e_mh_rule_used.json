@@ -1,0 +1,8 @@
+{
+ "kind": "R_dpd+E_mh",
+ "source": "467550",
+ "status": "tentative",
+ "threshold": 0.20042857142857146,
+ "dpd_threshold": 2.205839598997494,
+ "youden_j": 0.4975577503736599
+}

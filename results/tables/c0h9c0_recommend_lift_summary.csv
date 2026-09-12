@@ -1,0 +1,7 @@
+definition,ranking,base_rate,top20_rate,lift_mean,lift_min,lift_max,years
+def_A,score,0.419,0.488,1.166,0.887,1.381,14
+def_A,score_clim,0.419,0.515,1.217,0.604,1.585,14
+def_A,score_moon,0.419,0.451,1.081,0.811,1.318,14
+evening_clear,score,0.281,0.335,1.231,0.758,1.71,14
+evening_clear,score_clim,0.281,0.34,1.198,0.711,1.649,14
+evening_clear,score_moon,0.281,0.312,1.134,0.834,1.487,14

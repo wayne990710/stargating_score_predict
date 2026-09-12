@@ -14,6 +14,8 @@ import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+plt.rcParams["font.family"] = ["Microsoft JhengHei", "DejaVu Sans"]
+plt.rcParams["axes.unicode_minus"] = False
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -24,13 +26,13 @@ MONTH_LABELS = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", 
 
 def main(stn_id="C0H9C0", truth_stn="467550", rule_kind="R_dpd", status="tentative"):
     th = json.load(open(C.RESULTS / "tables" / f"validation_{truth_stn}_thresholds.json", encoding="utf-8"))
-    rule = {"kind": rule_kind, "threshold": th["all_years"][rule_kind]["threshold"], "source": truth_stn, "status": status}
+    rule = {"kind": rule_kind, "source": truth_stn, "status": status, **th["all_years"][rule_kind]}
     nh = pd.read_csv(C.PROCESSED / "night_hours" / f"{stn_id}_night_hours.csv.gz", index_col="time", parse_dates=["time"])
     nh = nh[nh.index < "2026-01-01"]                    # 2026 kept out (held-out / activity comparison)
     pn = K.proxy_nights(nh, rule)
     pn.to_csv(C.PROCESSED / "nights" / f"{stn_id}_nights_proxy.csv", float_format="%.3f")
     T, F = C.RESULTS / "tables", C.RESULTS / "figures"
-    tag = stn_id.lower()
+    tag = stn_id.lower() + ("" if rule_kind == "R_dpd" else "_" + rule_kind.lower().replace("+", "_"))
     tabs = {}
     for col in ("def_A", "def_B", "evening_clear"):
         m = K.year_block_bootstrap(pn, col, "month")
