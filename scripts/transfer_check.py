@@ -22,7 +22,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 from hehuan import config as C, climatology as K, validate as V   # noqa: E402
 
-STATIONS = ["467550", "C0H9C0", "C0H990", "467530", "466910", "466920"]
+STATIONS = ["467550", "C0H9C0", "C0H990", "467530", "466910", "466920", "C0T790", "C0I530", "C0I540"]
 
 
 def load_nh(stn):
@@ -56,18 +56,29 @@ def main():
     fig.suptitle("Night-hour (20-04 LST) median and IQR by month"); fig.tight_layout()
     fig.savefig(F / "fig_transfer_feature_dist.png", dpi=130); plt.close(fig)
 
-    # 3. Hehuanshan vs Kunyang
-    if "C0H9C0" in frames and "C0H990" in frames:
+    # 3. Hehuanshan vs each neighbour (same-hour agreement of the proxy rule)
+    if "C0H9C0" in frames:
         th = json.load(open(T / "validation_467550_thresholds.json", encoding="utf-8"))
         rule = {"kind": "R_dpd", **th["all_years"]["R_dpd"]}
-        a, b = frames["C0H9C0"], frames["C0H990"]
-        j = a[["rh", "dpd"]].join(b[["rh", "dpd"]], lsuffix="_hh", rsuffix="_ky").dropna()
-        pa = K.apply_rule(a, rule).reindex(j.index); pb = K.apply_rule(b, rule).reindex(j.index)
-        out = dict(n_hours=len(j), rh_diff_mean=float((j.rh_hh - j.rh_ky).mean()), rh_diff_mad=float((j.rh_hh - j.rh_ky).abs().median()),
-                   dpd_diff_mean=float((j.dpd_hh - j.dpd_ky).mean()), rule_agreement=float((pa == pb).mean()),
-                   rule_kappa=float(V.kappa(pa, pb)), clear_share_hehuan=float(pa.mean()), clear_share_kunyang=float(pb.mean()))
-        pd.Series(out).round(3).to_csv(T / "transfer_hehuan_vs_kunyang.csv")
-        print("Hehuanshan vs Kunyang:", {k: round(v, 3) for k, v in out.items()})
+        a = frames["C0H9C0"]
+        rows = []
+        for nb in ("C0H990", "C0T790", "C0I530", "C0I540"):
+            if nb not in frames:
+                continue
+            b = frames[nb]
+            j = a[["rh", "dpd"]].join(b[["rh", "dpd"]], lsuffix="_hh", rsuffix="_nb").dropna()
+            if len(j) < 1000:
+                continue
+            pa = K.apply_rule(a, rule).reindex(j.index); pb = K.apply_rule(b, rule).reindex(j.index)
+            st = C.station(nb)
+            rows.append(dict(neighbour=nb, name=st.name_zh, alt_m=st.alt_m, n_hours=len(j),
+                             years=f"{j.index.year.min()}-{j.index.year.max()}",
+                             rh_diff_mean=float((j.rh_hh - j.rh_nb).mean()), rh_diff_mad=float((j.rh_hh - j.rh_nb).abs().median()),
+                             dpd_diff_mean=float((j.dpd_hh - j.dpd_nb).mean()), rule_agreement=float((pa == pb).mean()),
+                             rule_kappa=float(V.kappa(pa, pb)), clear_share_hehuan=float(pa.mean()), clear_share_neighbour=float(pb.mean())))
+        nbt = pd.DataFrame(rows).round(3)
+        nbt.to_csv(T / "transfer_hehuan_vs_neighbours.csv", index=False)
+        print(nbt.to_string(index=False))
 
     # 4. altitude gradient of skill
     rows = []
