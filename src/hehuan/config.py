@@ -36,7 +36,7 @@ FETCH_END = "2026-08"      # last calendar month to fetch (inclusive)
 
 
 def stations() -> pd.DataFrame:
-    df = pd.read_csv(CONFIG / "stations.csv", dtype=str, encoding="utf-8-sig")
+    df = pd.read_csv(CONFIG / "stations.csv", dtype=str, encoding="utf-8-sig", keep_default_na=False)
     for c in ("lat", "lon", "alt_m"):
         df[c] = df[c].astype(float)
     df["priority"] = df["priority"].astype(int)

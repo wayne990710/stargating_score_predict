@@ -1,84 +1,114 @@
-"""Scout D helper: night-window aggregation + Open-Meteo ERA5 fetch (no account needed).
+# -*- coding: utf-8 -*-
+"""Night-window aggregation.
 
-Conventions (decided in the methodology checklist):
-- Night window = 20:00..04:00 LST (9 hourly points). night_date = date of the evening.
-- Hourly 'clear' = cloud (0-10 scale) <= CLEAR_MAX (default 2).
-- Definition A (primary): night observable if >=3 consecutive clear hours AND >=6 valid hours.
-- Definition B (strict):  night observable if >=2/3 of valid hours clear (and >=6 valid hours).
-- Definition C (sensitivity): mean cloud over window <= 3.
+Conventions (docs/DECISIONS.md)
+- Night window = 20:00..04:00 LST (9 hourly points). night_date = date of the evening (ts - 12 h).
+- Hourly 'clear' = satellite cloud amount (0-10) <= CLEAR_MAX (default 2).
+- Definition A (primary): observable if >= 3 consecutive clear hours AND >= 6 valid hours.
+- Definition B (strict):  observable if >= 2/3 of valid hours are clear (and >= 6 valid hours).
+- Definition C (sensitivity): mean cloud over the window <= 3.
+A missing hour counts as NOT clear (it breaks a run) but does not count as valid.
 """
 import numpy as np
 import pandas as pd
 
-NIGHT_HOURS = [20, 21, 22, 23, 0, 1, 2, 3, 4]
-CLEAR_MAX = 2
-MIN_VALID = 6
+from . import config as C
 
-def night_date(ts: pd.Series) -> pd.Series:
-    """Assign each timestamp to the evening date of its night (20-23 -> same day, 00-04 -> previous day)."""
-    return (ts - pd.Timedelta(hours=12)).dt.normalize()
+NIGHT_HOURS = C.NIGHT_HOURS
+CLEAR_MAX = C.CLEAR_MAX_CLOUD
+MIN_VALID = C.MIN_VALID_HOURS
 
-def longest_run(bools: np.ndarray) -> int:
+
+def night_date(ts) -> pd.Series:
+    ts = pd.DatetimeIndex(ts) if not isinstance(ts, pd.Series) else ts
+    return (ts - pd.Timedelta(hours=12)).normalize()
+
+
+def longest_run(bools) -> int:
     best = cur = 0
     for b in bools:
         cur = cur + 1 if b else 0
         best = max(best, cur)
     return best
 
-def label_nights(df: pd.DataFrame, time_col="time", cloud_col="cloud",
-                 clear_max=CLEAR_MAX, min_valid=MIN_VALID, min_run=3, frac_b=2/3, mean_c=3.0) -> pd.DataFrame:
-    """df: hourly rows with a local-time timestamp and a 0-10 cloud value (NaN allowed).
-    Returns one row per night with n_valid, n_clear, longest_clear_run, def_A, def_B, def_C (NaN if too few valid hours)."""
+
+def night_hours_frame(hourly: pd.DataFrame) -> pd.DataFrame:
+    """Keep only the 9 night hours and add night / hour_in_night columns."""
+    d = hourly[hourly.index.hour.isin(NIGHT_HOURS)].copy()
+    d["night"] = night_date(d.index)
+    d["second_half"] = d.index.hour <= 4
+    return d
+
+
+def label_from_clear(clear: pd.Series, valid: pd.Series, mean_cloud: pd.Series,
+                     min_valid=MIN_VALID, min_run=C.MIN_CLEAR_RUN, frac_b=2 / 3, mean_c=3.0) -> pd.DataFrame:
+    """Vectorised night labels from per-hour 'clear' (bool, False when missing) and 'valid' (bool) series
+    that are indexed by hour-ending time; returns one row per night."""
+    df = pd.DataFrame({"clear": clear.astype(bool), "valid": valid.astype(bool), "cloud": mean_cloud})
+    df["night"] = night_date(df.index)
+    g = df.groupby("night")
+    out = pd.DataFrame({
+        "n_valid": g["valid"].sum(),
+        "n_clear": g["clear"].sum(),
+        "longest_clear_run": g["clear"].apply(lambda s: longest_run(s.to_numpy())),
+        "mean_cloud": g["cloud"].mean(),
+    })
+    ok = out["n_valid"] >= min_valid
+    out["def_A"] = np.where(ok, (out["longest_clear_run"] >= min_run).astype(float), np.nan)
+    out["def_B"] = np.where(ok, (out["n_clear"] / out["n_valid"].replace(0, np.nan) >= frac_b).astype(float), np.nan)
+    out["def_C"] = np.where(ok, (out["mean_cloud"] <= mean_c).astype(float), np.nan)
+    return out
+
+
+def label_nights(df: pd.DataFrame, time_col="time", cloud_col="cloud", clear_max=CLEAR_MAX, **kw) -> pd.DataFrame:
+    """Convenience wrapper used by tests: df with a time column and a 0-10 cloud column."""
     d = df[[time_col, cloud_col]].copy()
     d[time_col] = pd.to_datetime(d[time_col])
-    d = d[d[time_col].dt.hour.isin(NIGHT_HOURS)]
-    d["night"] = night_date(d[time_col])
-    d = d.sort_values(time_col)
-    out = []
-    for night, g in d.groupby("night"):
-        c = g[cloud_col].to_numpy(dtype=float)
-        valid = ~np.isnan(c)
-        n_valid = int(valid.sum())
-        clear = (c <= clear_max) & valid          # missing hour counts as NOT clear (breaks a run)
-        row = dict(night=night, n_valid=n_valid, n_clear=int(clear.sum()),
-                   longest_clear_run=longest_run(clear), mean_cloud=np.nanmean(c) if n_valid else np.nan)
-        if n_valid < min_valid:
-            row.update(def_A=np.nan, def_B=np.nan, def_C=np.nan)
-        else:
-            row.update(def_A=float(row["longest_clear_run"] >= min_run),
-                       def_B=float(row["n_clear"] / n_valid >= frac_b),
-                       def_C=float(row["mean_cloud"] <= mean_c))
-        out.append(row)
-    return pd.DataFrame(out)
+    d = d.set_index(time_col).sort_index()
+    d = d[d.index.hour.isin(NIGHT_HOURS)]
+    valid = d[cloud_col].notna()
+    clear = (d[cloud_col] <= clear_max) & valid
+    out = label_from_clear(clear, valid, d[cloud_col], **kw)
+    return out.reset_index()
 
-def fetch_open_meteo_era5(lat, lon, start, end, model="era5", timezone="Asia/Taipei"):
-    """Hourly ERA5 cloud cover (%, 0-100) via Open-Meteo archive API. No API key for non-commercial use.
-    Returns DataFrame with local-time 'time' and cloud_cover, cloud_cover_low/mid/high, plus grid-point metadata.
-    Fetch one calendar year per call and sleep >=1 s between calls."""
-    import requests
-    url = "https://archive-api.open-meteo.com/v1/archive"
-    params = dict(latitude=lat, longitude=lon, start_date=start, end_date=end,
-                  hourly="cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high",
-                  models=model, timezone=timezone)
-    r = requests.get(url, params=params, timeout=60)
-    r.raise_for_status()
-    j = r.json()
-    df = pd.DataFrame(j["hourly"])
-    df["time"] = pd.to_datetime(df["time"])
-    df.attrs.update(grid_lat=j["latitude"], grid_lon=j["longitude"], grid_elev_dem=j.get("elevation"))
-    return df
 
-if __name__ == "__main__":
-    # self-test with synthetic data
-    t = pd.date_range("2024-01-01 00:00", "2024-01-05 23:00", freq="h")
-    rng = np.random.default_rng(0)
-    cloud = rng.integers(0, 11, size=len(t)).astype(float)
-    cloud[(t.hour >= 20) & (t.day == 2)] = 0          # night of Jan 2 evening: clear 20-23
-    cloud[(t.hour <= 4) & (t.day == 3)] = 0           # ... and 00-04 of Jan 3 -> whole night clear
-    cloud[(t.hour <= 4) & (t.day == 4)] = np.nan      # night of Jan 3: 5 missing -> only 4 valid -> NaN label
-    res = label_nights(pd.DataFrame({"time": t, "cloud": cloud}))
-    print(res.to_string())
-    assert res.loc[res.night == "2024-01-02", "def_A"].item() == 1.0
-    assert res.loc[res.night == "2024-01-02", "def_B"].item() == 1.0
-    assert np.isnan(res.loc[res.night == "2024-01-03", "def_A"].item())
-    print("self-test OK")
+def truth_nights(hourly: pd.DataFrame, cloud_col="cloud_sat", clear_max=CLEAR_MAX) -> pd.DataFrame:
+    """Night truth table from a satellite/observed cloud column (0-10)."""
+    d = hourly[hourly.index.hour.isin(NIGHT_HOURS)]
+    valid = d[cloud_col].notna()
+    clear = (d[cloud_col] <= clear_max) & valid
+    return label_from_clear(clear, valid, d[cloud_col])
+
+
+def station_night_aggregates(hourly: pd.DataFrame) -> pd.DataFrame:
+    """Per-night summaries of station variables (for climatology plots and transfer checks)."""
+    d = night_hours_frame(hourly)
+    g = d.groupby("night")
+    agg = {}
+    for c in ("rh", "dpd", "t_air", "wind", "pres"):
+        if c in d:
+            agg[f"{c}_mean"] = g[c].mean()
+            agg[f"{c}_min"] = g[c].min()
+            agg[f"{c}_max"] = g[c].max()
+    if "precip" in d:
+        agg["precip_night"] = g["precip"].sum(min_count=1)
+        agg["precip_known_hours"] = g["precip"].count()
+    if "solar" in d:   # daytime solar of the evening day (proxy for afternoon convection) is added elsewhere
+        pass
+    out = pd.DataFrame(agg)
+    out["n_hours_rh"] = g["rh"].count() if "rh" in d else 0
+    return out
+
+
+def era5_night_aggregates(era5: pd.DataFrame) -> pd.DataFrame:
+    d = era5[era5.index.hour.isin(NIGHT_HOURS)].copy()
+    d["night"] = night_date(d.index)
+    g = d.groupby("night")
+    out = pd.DataFrame({
+        "e_tcc_mean": g["e_tcc"].mean(), "e_tcc_min": g["e_tcc"].min(), "e_tcc_max": g["e_tcc"].max(),
+        "e_lcc_mean": g["e_lcc"].mean(), "e_mcc_mean": g["e_mcc"].mean(), "e_hcc_mean": g["e_hcc"].mean(),
+        "e_mh_mean": g["e_mh"].mean(), "e_mh_min": g["e_mh"].min(),
+        "e_rh_mean": g["e_rh"].mean(), "e_t2m_mean": g["e_t2m"].mean(),
+        "e_precip_night": g["e_precip"].sum(),
+    })
+    return out

@@ -31,5 +31,41 @@
   "elevation": 3017.0,
   "utc_offset_seconds": 28800,
   "rows": 157800
- }
+ },
+ "467530_alishan": {
+  "requested": [
+   23.508208,
+   120.813242
+  ],
+  "latitude": 23.5,
+  "longitude": 120.75,
+  "elevation": 2417.0,
+  "utc_offset_seconds": 28800,
+  "rows": 157800,
+  "cell_selection": "nearest"
+ },
+ "C0H9C0_hehuanshan": {
+  "requested": [
+   24.1434,
+   121.2725
+  ],
+  "latitude": 24.25,
+  "longitude": 121.25,
+  "elevation": 3017.0,
+  "utc_offset_seconds": 28800,
+  "rows": 157800
+ },
+ "467550_yushan": {
+  "requested": [
+   23.4875,
+   120.9594
+  ],
+  "latitude": 23.5,
+  "longitude": 121.0,
+  "elevation": null,
+  "utc_offset_seconds": 28800,
+  "rows": 157800,
+  "note": "grid elevation not recorded by scout; re-fetch to fill"
+ },
+ "_note": "Open-Meteo default cell_selection=land may pick a neighbouring cell by elevation match; alishan re-fetched with cell_selection=nearest. Other sites fetched with default (their cells were verified: taipei 25.0/121.5, anbu 25.25/121.5, hehuan cluster 24.25/121.25, yushan 23.5/121.0)."
 }

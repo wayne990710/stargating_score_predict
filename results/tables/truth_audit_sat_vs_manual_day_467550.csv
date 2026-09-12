@@ -1,0 +1,4 @@
+year,n,manual_clear,sat_clear,both,manual_clear_sat_cloudy,manual_cloudy_sat_clear,recall_of_manual_clear,kappa
+2023,1670,398,272,184,214,88,0.462,0.441
+2024,1781,339,278,172,167,106,0.507,0.466
+2025,1719,360,327,201,159,126,0.558,0.482
