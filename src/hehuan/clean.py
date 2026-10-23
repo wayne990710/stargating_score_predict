@@ -178,11 +178,11 @@ def rh_sensor_summary(df: pd.DataFrame, stn_id: str) -> pd.DataFrame:
 
 def stuck_hours(df: pd.DataFrame, stn_id: str, min_run: int = 12) -> pd.DataFrame:
     """Flag runs of >= min_run identical non-saturated RH values (sensor stuck). Saturation (rh >= rh_max
-    of that year) is excluded because a 3,400 m station really can sit in cloud for a day."""
+    of that year, or anything >= 97 %) is excluded because a 3,400 m station really can sit in cloud for a day."""
     rh = df["rh"]
     flag = pd.Series(False, index=df.index)
     for y, g in rh.groupby(rh.index.year):
-        sat = g.max()
+        sat = min(g.max(), 97.0)   # sensors saturate anywhere in 97-100 %; long runs there = in cloud, not stuck
         same = (g == g.shift()) & (g < sat) & g.notna()
         run_id = (~same).cumsum()
         run_len = same.groupby(run_id).transform("sum") + 1
