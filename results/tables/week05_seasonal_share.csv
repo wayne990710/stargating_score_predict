@@ -1,0 +1,17 @@
+﻿stn_id,name,definition,season,share,nights
+466920,臺北（人工雲量）,evening_clear,冬 DJF,0.097,872
+466920,臺北（人工雲量）,evening_clear,夏 JJA,0.128,828
+466920,臺北（人工雲量）,evening_clear,春 MAM,0.1,859
+466920,臺北（人工雲量）,evening_clear,秋 SON,0.125,819
+467550,玉山（人工雲量，參考）,evening_clear,冬 DJF,0.557,1261
+467550,玉山（人工雲量，參考）,evening_clear,夏 JJA,0.224,1273
+467550,玉山（人工雲量，參考）,evening_clear,春 MAM,0.313,1283
+467550,玉山（人工雲量，參考）,evening_clear,秋 SON,0.476,1272
+C0H9C0,合歡山（露點差代理）,evening_clear,冬 DJF,0.336,1124
+C0H9C0,合歡山（露點差代理）,evening_clear,夏 JJA,0.198,1092
+C0H9C0,合歡山（露點差代理）,evening_clear,春 MAM,0.21,1124
+C0H9C0,合歡山（露點差代理）,evening_clear,秋 SON,0.333,1145
+C0H9C0,合歡山（露點差代理）,night_A,冬 DJF,0.399,1159
+C0H9C0,合歡山（露點差代理）,night_A,夏 JJA,0.447,1150
+C0H9C0,合歡山（露點差代理）,night_A,春 MAM,0.316,1182
+C0H9C0,合歡山（露點差代理）,night_A,秋 SON,0.486,1184

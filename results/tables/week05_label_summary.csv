@@ -1,0 +1,5 @@
+﻿stn_id,name,definition,nights,years,n_years,clear_nights,share
+466920,臺北（人工雲量）,evening_clear,3378,2008-2017,10,379,0.112
+467550,玉山（人工雲量，參考）,evening_clear,5089,2008-2021,14,1993,0.392
+C0H9C0,合歡山（露點差代理）,evening_clear,4485,2011-2025,15,1211,0.27
+C0H9C0,合歡山（露點差代理）,night_A,4675,2011-2025,15,1926,0.412
