@@ -1,0 +1,44 @@
+{
+ "station_only": {
+  "model": "M2 露點差+雨",
+  "features": [
+   "ldpd",
+   "rain"
+  ],
+  "intercept": -2.1556,
+  "weights": {
+   "ldpd": 1.4621,
+   "rain": -2.2146
+  },
+  "standardized": {
+   "ldpd": 1.541,
+   "rain": -0.82
+  },
+  "trained_on": "467550 Yushan, manual cloud 20/21 LST, 2008-2021",
+  "n": 10185
+ },
+ "full": {
+  "model": "M3 露點差+雨+ERA5中高雲",
+  "features": [
+   "ldpd",
+   "rain",
+   "e_mcc",
+   "e_hcc"
+  ],
+  "intercept": -0.9282,
+  "weights": {
+   "ldpd": 1.3403,
+   "rain": -1.2941,
+   "e_mcc": -3.6139,
+   "e_hcc": -1.9703
+  },
+  "standardized": {
+   "ldpd": 1.412,
+   "rain": -0.479,
+   "e_mcc": -1.043,
+   "e_hcc": -0.824
+  },
+  "trained_on": "467550 Yushan, manual cloud 20/21 LST, 2008-2021",
+  "n": 10185
+ }
+}
