@@ -92,6 +92,13 @@ def night_ephem(date: dt.date, lat: float, lon: float, elev: float) -> dict:
     obs.date = mid; moon.compute(obs)
     moon_alt_midnight = float(moon.alt) * 180 / 3.141592653589793
     dark_h, night_h = dark_moonless_hours(dusk, dawn, intervals)
+    # evening window = astronomical dusk -> local midnight (school events end by ~23-24 h)
+    midnight = dt.datetime.combine(date + dt.timedelta(days=1), dt.time(0, 0), TZ).astimezone(UTC)
+    ev_end = min(midnight, dawn)
+    if ev_end > dusk:
+        dark_ev, ev_h = dark_moonless_hours(dusk, ev_end, intervals)
+    else:
+        dark_ev, ev_h = 0.0, 0.0
 
     def loc(t):
         return t.astimezone(TZ).replace(tzinfo=None)
@@ -103,7 +110,9 @@ def night_ephem(date: dt.date, lat: float, lon: float, elev: float) -> dict:
                 moonset=night_moonset[0] if night_moonset else pd.NaT,
                 moon_illum=round(illum, 3), moon_alt_midnight=round(moon_alt_midnight, 1),
                 night_hours=round(night_h, 2), dark_hours=round(dark_h, 2),
-                dark_frac=round(dark_h / night_h, 3) if night_h else float("nan"))
+                dark_frac=round(dark_h / night_h, 3) if night_h else float("nan"),
+                evening_hours=round(ev_h, 2), dark_hours_evening=round(dark_ev, 2),
+                dark_frac_evening=round(dark_ev / ev_h, 3) if ev_h else float("nan"))
 
 
 def astro_table(lat, lon, elev, start="2008-01-01", end="2027-12-31") -> pd.DataFrame:

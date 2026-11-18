@@ -15,7 +15,8 @@
 
 ```bash
 pip install -r requirements.txt
-python scripts/recommend.py --start 2026-12-01 --end 2026-12-31 --top 10
+python scripts/recommend.py --site hehuan --start 2027-03-01 --end 2027-05-31 --only-days-off
+python scripts/recommend.py --site taipei --start 2026-10-01 --end 2026-10-31
 ```
 
 ## 重建全部結果

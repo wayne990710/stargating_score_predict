@@ -143,3 +143,10 @@ pytest -q
 - **跨站**：玉山權重用於他站 AUC ≈ 當地權重（.84–.87），但平均指數 vs 實際晴：臺北 46 vs 14、鞍部 26 vs 13、阿里山 30 vs 31。→ 排序可搬、絕對值不可搬。這是目前對合歡山最誠實的說法。
 - 合歡山月平均指數與門檻規則月排序相關 .98。
 - 下一步：第 8 週推薦工具可改用指數（full）當 P；第 9–10 週鹿林。
+
+## 16. 2026-11-18 更新（第 8 週）
+- 使用者中途叫停多代理審查工作流程（ultracode），之後說「繼續」→ 直接修，不再派代理。以後此專案優先直接做、少用工作流程。
+- recommend.py 重寫：兩地（臺北用 466920 人工雲量半月表，新 scripts/build_taipei_prob.py）、即時 ephem、--window night/evening（astro.night_ephem 新增 evening_hours/dark_hours_evening，傍晚=暮光結束–24:00）、假日權重 0.6 移除改 --only-days-off、日曆範圍外用週末、中文欄位、CSV utf-8-sig。
+- tests/test_recommend.py 13 項（USNO 月出月沒 2026-10-09 臺北 04:16、2027-04-03 合歡山 03:20、2027-04-09 月沒 20:38；DGPA 原始 CSV）。全套 18 passed。
+- 整夜 vs 傍晚：Spearman .83，前 20 重疊 11/13。
+- 未做：連續 N 晚推薦、學校行事曆輸入、月亮亮度權重、build_astro 表未重建（新欄位只在即時計算中）。
