@@ -78,6 +78,32 @@ def year_block_bootstrap(nights: pd.DataFrame, col: str, by="month", n_boot=1000
     return base.round(3)
 
 
+def consecutive_any(nights: pd.DataFrame, col: str, n: int, n_boot=1000, seed=0) -> pd.DataFrame:
+    """Per half-month (of the FIRST night): share of n-consecutive-night runs with at least one clear night
+    (p_any) and with every night clear (p_all). Only runs whose n nights all have a label are counted.
+    95 % CI of p_any by resampling whole years (year of the first night) with replacement."""
+    if n < 1:
+        raise ValueError("n must be >= 1")
+    s = nights[col].astype(float).sort_index()
+    s = s[~s.index.duplicated()].asfreq("D")                       # daily grid, gaps become NaN
+    stack = np.column_stack([s.shift(-k).to_numpy() for k in range(n)])
+    ok = ~np.isnan(stack).any(axis=1)
+    d = pd.DataFrame({"any": stack.max(axis=1), "all": stack.min(axis=1)}, index=s.index)[ok]
+    d["year"] = d.index.year
+    d["halfmonth"] = d.index.month.astype(str).str.zfill(2) + np.where(d.index.day <= 15, "a", "b")
+    g = d.groupby("halfmonth")
+    out = pd.DataFrame({"p_any": g["any"].mean(), "p_all": g["all"].mean(), "n": g["any"].count(),
+                        "n_years": g["year"].nunique()})
+    agg = d.groupby(["year", "halfmonth"])["any"].agg(["sum", "count"]).unstack("halfmonth")
+    S = agg["sum"].reindex(columns=out.index).fillna(0).to_numpy()
+    N = agg["count"].reindex(columns=out.index).fillna(0).to_numpy()
+    pick = np.random.default_rng(seed).integers(0, len(S), size=(n_boot, len(S)))
+    cnt = N[pick].sum(axis=1)
+    boots = S[pick].sum(axis=1) / np.where(cnt == 0, np.nan, cnt)
+    out["ci_lo"], out["ci_hi"] = np.nanpercentile(boots, [2.5, 97.5], axis=0)
+    return out.round(3)
+
+
 def month_hour_heatmap(nh: pd.DataFrame, rule: dict) -> pd.DataFrame:
     clear = apply_rule(nh, rule); valid = hourly_valid(nh, rule)
     d = pd.DataFrame({"clear": clear[valid], "month": nh.index.month[valid], "hour": nh.index.hour[valid]})

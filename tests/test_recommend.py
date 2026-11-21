@@ -106,3 +106,63 @@ def test_taipei_table_uses_only_2008_2017_manual_obs():
     lab = lab[lab["evening_clear"].notna() & (lab["night"].dt.month == 1) & (lab["night"].dt.day <= 15)]
     clear = lab["evening_clear"].astype(str).str.lower().eq("true")
     assert abs(t.loc["01a", "p"] - clear.mean()) < 0.001
+
+
+# ---- consecutive nights (--nights N) -------------------------------------------------------------
+def _brute_any(stn, month, first_half, n):
+    """Count n-night runs by plain loops over the label file (independent of climatology.consecutive_any)."""
+    lab = pd.read_csv(ROOT / "data" / "processed" / "labels" / f"{stn}_night_labels.csv", parse_dates=["night"])
+    val = {}
+    for night, v in zip(lab["night"], lab["evening_clear"].astype(str).str.lower()):
+        if v in ("true", "false") and night.year < 2026:
+            val[night] = v == "true"
+    runs = any_ = all_ = 0
+    for night in val:
+        if night.month != month or (night.day <= 15) != first_half:
+            continue
+        w = [val.get(night + pd.Timedelta(days=k)) for k in range(n)]
+        if None in w:
+            continue
+        runs += 1; any_ += any(w); all_ += all(w)
+    return any_ / runs, all_ / runs, runs
+
+
+@pytest.mark.parametrize("site,stn,start,month,first_half,n", [
+    ("hehuan", "C0H9C0", "2027-04-02", 4, True, 2),
+    ("hehuan", "C0H9C0", "2027-01-20", 1, False, 3),
+    ("taipei", "466920", "2027-04-29", 4, False, 2),
+])
+def test_any_clear_of_n_nights_matches_brute_force_count(site, stn, start, month, first_half, n):
+    df, _ = R.recommend(start, start, site, nights=n)
+    p_any, p_all, runs = _brute_any(stn, month, first_half, n)
+    r = row(df, start)
+    assert abs(r["至少一晚晴"] - p_any) < 0.001
+    assert abs(r["每晚都晴"] - p_all) < 0.001
+    assert r["歷史樣本數"] == runs
+
+
+def test_stay_rows_cover_n_nights_and_score():
+    df, _ = R.recommend("2027-04-01", "2027-04-10", "hehuan", nights=2)
+    one, _ = R.recommend("2027-04-01", "2027-04-11", "hehuan")
+    assert len(df) == 10                                   # one stay per start date, last one ends 04-11
+    r = row(df, "2027-04-02")
+    assert r["最後一晚"] == "2027-04-03"
+    assert r["隔天放假"] == "是"                            # Sat 04-03 and Sun 04-04 both off
+    assert row(df, "2027-04-01")["隔天放假"] == "否"        # Fri 04-02 is a school day
+    frac = (row(one, "2027-04-02")["無月比例"] + row(one, "2027-04-03")["無月比例"]) / 2
+    assert abs(r["分數"] - r["至少一晚晴"] * frac) < 0.006
+    assert r["最少無月黑暗h"] == min(row(one, "2027-04-02")["無月黑暗h"], row(one, "2027-04-03")["無月黑暗h"])
+    assert r["每晚都晴"] <= r["單晚晴機率"] <= r["至少一晚晴"]
+    lo, hi = map(float, r["至少一晚晴95%區間"].split("–"))
+    assert lo <= r["至少一晚晴"] <= hi
+
+
+def test_single_night_output_unchanged_by_nights_option():
+    a, _ = R.recommend("2027-04-01", "2027-04-10", "hehuan")
+    b, _ = R.recommend("2027-04-01", "2027-04-10", "hehuan", nights=1)
+    assert a.equals(b) and "至少一晚晴" not in a.columns
+
+
+def test_nights_out_of_range_is_an_error():
+    with pytest.raises(ValueError):
+        R.recommend("2027-04-01", "2027-04-10", "hehuan", nights=0)
