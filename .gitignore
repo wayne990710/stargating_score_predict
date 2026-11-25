@@ -23,3 +23,6 @@ results/**/*.tmp
 # personal documents (contain the student's real name)
 *計畫書*.pdf
 *.docx
+
+# Lulin Observatory derived hourly tables: source has no stated licence, keep local
+data/processed/lulin/

@@ -165,3 +165,11 @@ pytest -q
 - 限制：跨半月的住宿只用第一晚的半月；合歡山仍是暫定（代理標籤）；輸出檔名加 `_Nnights`。
 - 坑：用 bash heredoc 寫 Python 修補腳本時，反斜線 n 的跳脫會被變成真的換行（工具層先吃掉一層跳脫）→ 含換行跳脫字元的修改直接用 Edit。
 - 指令：`python scripts/recommend.py --site hehuan --start 2027-03-26 --end 2027-04-10 --nights 2`
+
+## 17. 2026-11-25 更新（第 9 週）
+- **坑：Microsoft Store 版 Python 會把 %LOCALAPPDATA% 虛擬化**。Python 看到的 hehuan_cache 實際在 AppData/Local/Packages/PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0/LocalCache/Local/hehuan_cache；bash/curl 寫到真正的 AppData/Local/hehuan_cache，Python 看不到。鹿林資料已搬到虛擬化位置（…/hehuan_cache/lulin）。以後用 curl 下載給 Python 讀的檔案要放那裡。
+- 新增 src/hehuan/lulin.py、scripts/build_lulin.py、docs/week09_鹿林資料解析.md。產出 data/processed/lulin/（已 gitignore，來源未標授權，不公開）：lulin_night_hours 25,771 小時、2,911 晚（2012-06～2024-12）。
+- 雲感測器 SkyRl = 天空−環境溫差；夜間雙峰（晴 −25~−40、陰 −10~0），門檻 −20（−15/−25 → 晴比例 .67/.61/.54）。flags2 末位 = wet。晴峰位置 2018–2020、2024 偏 −40（感測器/設定變動）。時鐘 lag 0（2017 可能 −1h）。Davis 時間 2018 前 12 小時制。
+- **重要現象**：鹿林雲感測器夏季越晚越晴（7 月 20 時 .50 → 04 時 .78），與露點差規則的型態一致 → 9 月「夏季後半夜是假晴」的判斷可能過早（當時依據 ERA5 中高雲）。但 IR 感測器看不到薄卷雲。第 10 週要正式檢驗。
+- 第 10 週待辦：規則/指數 vs 鹿林雲感測器（整夜各時段、各季、三個門檻、2017 另看）；鹿林 ERA5 格點在 120.75/121.0 交界（120.874），需另抓 Open-Meteo（cell_selection=nearest）。
+- 使用者指示：之後每週的「完成／修正」直接寫進計畫書 docx → scripts/fill_plan_check.py <週> "<說明>"（備份在 CACHE_DIR/plan_backups）。第 9 週已填。第 7、8 週使用者自己填了。
