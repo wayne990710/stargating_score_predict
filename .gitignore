@@ -26,3 +26,6 @@ results/**/*.tmp
 
 # Lulin Observatory derived hourly tables: source has no stated licence, keep local
 data/processed/lulin/
+
+# 文獻 PDF：有著作權，只留在本機，不進公開 repo
+文獻 PDF/
